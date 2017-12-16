@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/abiosoft/semaphore"
-    "gopkg.in/cheggaaa/pb.v1"
+	"gopkg.in/cheggaaa/pb.v1"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -21,7 +21,7 @@ const edgecastLinkM3U8End string = ".m3u8"
 const targetdurationStart string = "TARGETDURATION:"
 const targetdurationEnd string = "\n#ID3"
 const ffmpegCMD string = `ffmpeg`
-const group int        = 100
+const group int		= 100
 
 var sem = semaphore.New(5)
 
@@ -100,28 +100,28 @@ func startingChunk(sh int, sm int, ss int, target int) int {
 
 
 func file_exists(f string) bool {
-    _, err := os.Stat(f)
-    if os.IsNotExist(err) {
-        return false
-    }
-    return err == nil
+	_, err := os.Stat(f)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return err == nil
 }
 
 func downloadChunk(edgecastBaseURL string, chunkNum int, vodID string) {
 
-    filename := fmt.Sprintf("%s_%04d.mp4",vodID, chunkNum )
-    if( file_exists(filename) ) {
-        return
-    }
+	filename := fmt.Sprintf("%s_%04d.mp4",vodID, chunkNum )
+	if( file_exists(filename) ) {
+		return
+	}
 	resp, err := http.Get(edgecastBaseURL + strconv.Itoa(chunkNum) + ".ts")
 	if err != nil {
-        fmt.Println("http.Get Error:"+err.Error())
+		fmt.Println("http.Get Error:"+err.Error())
 		os.Exit(1)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-        fmt.Println("ioutil.ReadAll Error:"+err.Error())
+		fmt.Println("ioutil.ReadAll Error:"+err.Error())
 		os.Exit(1)
 	}
 
@@ -146,14 +146,13 @@ func ffmpegCombine( input []string, output string) bool {
 	if err != nil {
 		fmt.Println(errbuf.String())
 		fmt.Println("ffmpeg error")
-        return false
+		return false
 	}
 
-    //TODO: reenable once merge logic is right
-    for _,del := range input {
+	for _,del := range input {
 		os.Remove(del)
-    }
-    return true
+	}
+	return true
 }
 
 /*
@@ -162,23 +161,23 @@ func ffmpegCombine( input []string, output string) bool {
  */
 func ffmpegCombineChunks(chunkNum int, startChunk int, vodID string) bool {
 
-    var input []string;
+	var input []string;
 	for i := startChunk; i < (startChunk + chunkNum); i++ {
 		input = append(input, fmt.Sprintf("%s_%04d.mp4",vodID, i ))
 	}
 
-    output := fmt.Sprintf("%s_c%02d.mp4",vodID,startChunk / group)
+	output := fmt.Sprintf("%s_c%02d.mp4",vodID,startChunk / group)
 
-    if( file_exists( output ) )  {
-        for i:= 0; i < 10; i++  {
-            output = fmt.Sprintf("%s_c%02d_%02d.mp4",vodID,startChunk / group,i)
-            if( !file_exists( output ) ) { break }
-        }
-    }
+	if( file_exists( output ) )  {
+		for i:= 0; i < 10; i++  {
+			output = fmt.Sprintf("%s_c%02d_%02d.mp4",vodID,startChunk / group,i)
+			if( !file_exists( output ) ) { break }
+		}
+	}
 
 
 
-    return ffmpegCombine( input, output )
+	return ffmpegCombine( input, output )
 
 
 }
@@ -188,26 +187,26 @@ func downloadAndCombine(edgecastBaseURL string, chunkNum int, startChunk int, vo
 	var wg sync.WaitGroup
 	wg.Add(chunkNum)
 
-    bar := pb.StartNew(chunkNum).Prefix( fmt.Sprintf("Chunk: %4d",startChunk))
+	bar := pb.StartNew(chunkNum).Prefix( fmt.Sprintf("Chunk: %4d",startChunk))
 
 	for i := startChunk; i < (startChunk + chunkNum); i++ {
 
 		go func(chunk int) {
-            //Only 5 simultaneous downloads
-            sem.Acquire()
-            downloadChunk(edgecastBaseURL, chunk, vodID)
-            bar.Increment()
-            defer wg.Done()
+			//Only 5 simultaneous downloads
+			sem.Acquire()
+			downloadChunk(edgecastBaseURL, chunk, vodID)
+			bar.Increment()
+			defer wg.Done()
 
-            sem.Release()
-        }(i)
+			sem.Release()
+		}(i)
 	}
 	wg.Wait()
-    bar.Finish()
+	bar.Finish()
 
 	fmt.Println("Combining parts...")
 
-    ffmpegCombineChunks(chunkNum, startChunk, vodID)
+	ffmpegCombineChunks(chunkNum, startChunk, vodID)
 }
 
 
@@ -242,7 +241,7 @@ func main() {
 
 	sig, token, err := accessTokenAPI(tokenAPILink)
 	if err != nil {
-        fmt.Println("Couldn't access twitch token api:"+err.Error())
+		fmt.Println("Couldn't access twitch token api:"+err.Error())
 		os.Exit(1)
 	}
 
@@ -266,28 +265,28 @@ func main() {
 	chunkNum := numberOfChunks(vodSH, vodSM, vodSS, vodEH, vodEM, vodES, targetduration)
 	startChunk := startingChunk(vodSH, vodSM, vodSS, targetduration)
 
-    fmt.Printf("Starting Download:( %4d : %4d )\n",startChunk,chunkNum)
+	fmt.Printf("Starting Download:( %4d : %4d )\n",startChunk,chunkNum)
 
-    //All-in-one
-    //downloadAndCombine( edgecastBaseURL, chunkNum, startChunk, vodIDString )
+	//All-in-one
+	//downloadAndCombine( edgecastBaseURL, chunkNum, startChunk, vodIDString )
 
-    //group-wise
-    lastChunk  := startChunk + chunkNum
+	//group-wise
+	lastChunk  := startChunk + chunkNum
 
-    startGroup :=    startChunk / group
-     lastGroup := (lastChunk-1) / group + 1
+	startGroup :=	startChunk / group
+	 lastGroup := (lastChunk-1) / group + 1
 
 	for i := startGroup; i < lastGroup; i++ {
 
-        //group in multiples of group. First and last may not be full groups
-        start := i*group
-        if( start < startChunk ){ start = startChunk }
+		//group in multiples of group. First and last may not be full groups
+		start := i*group
+		if( start < startChunk ){ start = startChunk }
 
-        end := (i+1)*group
-        if( end > lastChunk ) { end = lastChunk }
+		end := (i+1)*group
+		if( end > lastChunk ) { end = lastChunk }
 
-        downloadAndCombine( edgecastBaseURL, end-start, start, vodIDString )
-    }
+		downloadAndCombine( edgecastBaseURL, end-start, start, vodIDString )
+	}
 
 	fmt.Println("All done!")
 }
